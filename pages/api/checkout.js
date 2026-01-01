@@ -8,8 +8,13 @@ export default async function handler(req, res) {
   }
 
   try {
+<<<<<<< HEAD
     const { customer, plate_config } = req.body;
     console.log(customer, "now customer endssss" , plate_config);
+=======
+    const { customer, plate_config, quantity } = req.body;
+
+>>>>>>> 49c28df9fd13f63873c3ffdb0104c199b21cb88c
     if (!customer || !plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
     }
