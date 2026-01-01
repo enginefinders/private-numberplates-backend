@@ -1,8 +1,8 @@
 // pages/api/checkout.js
 import axios from "axios";
 import { Resend } from "resend";
-// import connectDB from "@/lib/mongodb";
-// import Backup from "@/lib/mongodb";
+import connectDB from "@/lib/mongodb";
+import Backup from "@/lib/backupModel";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   try {
     // ✅ CONNECT DB
-    // await connectDB();
+    await connectDB();
 
     const body = req.body;
     const { customer, plate_config, quantity } = body;
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     }
 
     // ✅ SAVE BACKUP (DIRECT SAVE)
-    // await Backup.create(body);
+    await Backup.create(body);
 
     // ---------------- EMAIL ----------------
     const meta_data = [];
