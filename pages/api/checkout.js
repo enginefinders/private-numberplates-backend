@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     // WooCommerce REST API endpoint
     const endpoint = `${WP_URL}/wp-json/wc/v3/orders`;
-const wordpress_display = [
+const meta_data = [
       { key: 'Plate Type', value: plate_config.plate_type },
       { key: 'Size', value: plate_config.size },
       { key: 'Sides', value: plate_config.sides },
@@ -63,13 +63,8 @@ const wordpress_display = [
     line_items: [
   {
     product_id: parseInt(CUSTOM_PLATE_PRODUCT_ID, 10),
-    quantity: 1,
-    meta_data: [
-      {
-        key: "Order Details",
-        value: wordpress_display,
-      },
-    ],
+    quantity: Number(plate_config.quantity),
+    meta_data
   },
 ],
 fee_lines: [
