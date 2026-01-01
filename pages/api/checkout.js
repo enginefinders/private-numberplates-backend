@@ -31,7 +31,7 @@ export default async function handler(req, res) {
         first_name: customer.firstName,
         last_name: customer.lastName,
         email: customer.email,
-        phone: customer.phone,
+        phone: String(customer.phone),
         address_1: customer.address1,
         address_2: customer.address2 || "",
         city: customer.city,
