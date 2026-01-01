@@ -2,7 +2,7 @@
 import axios from "axios";
 import { Resend } from "resend";
 import connectDB from "@/lib/mongodb";
-import Backup from "@/lib/backupModel";
+import getBackupModel from "@/lib/backupModel";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,10 +20,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // ✅ SAVE BACKUP (DIRECT SAVE)
-     const backup = await Backup.create(body); 
-    console.log("Backup saved:", backup._id);
+      // ✅ SAVE BACKUP (DIRECT SAVE)
+     const Backup = getBackupModel(); // ✅ always get the model safely
 
+  const bodys = req.body;
+  const backup = await Backup.create(bodys);
     // ---------------- EMAIL ----------------
     const meta_data = [];
 
