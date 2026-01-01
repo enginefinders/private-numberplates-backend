@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customer, plate_config } = req.body;
+    const { customer, plate_config, quantity } = req.body;
 
     if (!customer || !plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -63,7 +63,7 @@ const meta_data = [
     line_items: [
   {
     product_id: parseInt(CUSTOM_PLATE_PRODUCT_ID, 10),
-    quantity: Number(plate_config.quantity),
+    quantity: Number(quantity),
     meta_data
   },
 ],
