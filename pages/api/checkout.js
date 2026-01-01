@@ -73,10 +73,10 @@ await resend.emails.send({
     <b>Plate Type:</b> ${plate_config.plate_type}<br />
   <b>Text:</b> ${plate_config.text}<br />
   <b>Plate Size:</b> ${plate_config.plate_size}<br />
-  ${plate_config.hexPlate ? (`<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />`) : ("<br />")}
+  ${plate_config.hexPlate ? (`<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />`) : (" ")}
   <b>Legality:</b> ${plate_config.legal_type}<br />
   <b>Sides:</b> ${plate_config.sides}<br />
-  ${plate_config.border.borderSelected ? (`<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />`) : ("<br />")}
+  ${plate_config.border.borderSelected ? (`<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />`) : (" ")}
   <b>Free Kit:</b> ${plate_config.freeKit.pads ? "Sticky pad x6" : "Self Taping Screws with Screw Caps"}<br />
   </div>`
 });
