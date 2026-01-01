@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: http://admin.private-numberplates.uk
+
+# Sitemaps
+Sitemap: http://admin.private-numberplates.uk/sitemap.xml

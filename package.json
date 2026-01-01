@@ -1,0 +1,26 @@
+{
+  "name": "backendd",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "postbuild": "next-sitemap --config next-sitemap.config.js"
+  },
+  "dependencies": {
+    "axios": "^1.11.0",
+    "form-data": "^4.0.4",
+    "next": "15.5.7",
+    "next-sitemap": "^4.2.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "zod": "^4.1.5",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "typescript": "5.9.3"
+  }
+}
