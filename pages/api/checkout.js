@@ -1,5 +1,6 @@
 // pages/api/checkout.js
 import axios from "axios";
+import { Resend } from 'resend';
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -21,18 +22,70 @@ export default async function handler(req, res) {
 
     // WooCommerce REST API endpoint
     const endpoint = `${WP_URL}/wp-json/wc/v3/orders`;
-const meta_data = [
-  { key: 'Text', value: plate_config.text },
-      { key: 'Plate Type', value: plate_config.plate_type },
-      { key: 'Size', value: plate_config.size },
-      { key: "Hex Plate", value: plate_config.hexPlate ? "Yes" : "No"},
-      { key: 'Sides', value: plate_config.sides },
-      { key: 'Badge', value: plate_config.badge.type},
-      { key: 'Border', value: plate_config.border.borderSelected ? plate_config.border.borderColor : "Not Selected"},
-      { key: 'Legal Type', value: plate_config.legal_type || 'road_legal' },
-      { key: 'Free Kit', value: plate_config.freeKit.pads ? "Sticky Pads x6" : plate_config.freeKit.pads ? "Self Taping Screws With Screw Caps" : "None Selected"},
-      { key: 'Total Price', value: plate_config.total ?? 0 }
-    ];
+    const meta_data = [];
+
+// Always present
+if (plate_config.text) {
+  meta_data.push({ key: "Text", value: plate_config.text });
+}
+
+if (plate_config.plate_type) {
+  meta_data.push({ key: "Plate Type", value: plate_config.plate_type });
+}
+
+if (plate_config.size) {
+  meta_data.push({ key: "Size", value: plate_config.size });
+}
+
+// Optional / conditional
+if (plate_config.hexPlate === true) {
+  meta_data.push({ key: "Hex Plate", value: "Yes" });
+}
+
+if (plate_config.sides) {
+  meta_data.push({ key: "Sides", value: plate_config.sides });
+}
+
+if (plate_config.badge?.type && plate_config.badge.type !== "none") {
+  meta_data.push({ key: "Badge", value: plate_config.badge.type });
+}
+
+if (plate_config.border?.borderSelected === true) {
+  meta_data.push({
+    key: "Border",
+    value: plate_config.border.borderColor,
+  });
+}
+
+if (plate_config.legal_type) {
+  meta_data.push({ key: "Legal Type", value: plate_config.legal_type });
+}
+
+// Free kit logic (fixed bug here)
+if (plate_config.freeKit?.pads === true) {
+  meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
+}
+
+if (plate_config.freeKit?.screws === true) {
+  meta_data.push({
+    key: "Free Kit",
+    value: "Self Taping Screws With Screw Caps",
+  });
+}
+
+// Pricing (always useful)
+if (plate_config.total != null) {
+  meta_data.push({ key: "Total Price", value: plate_config.total });
+}
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+await resend.emails.send({
+  from: 'Order <onboarding@resend.dev>',
+  to: 'order.pnpm@gmail.com',
+  subject: `Order recieved from ${customer.firstName}`,
+  html: `${meta_data}`
+});
+
     // Prepare WooCommerce order data
     const orderData = {
       payment_method: "stripe",
