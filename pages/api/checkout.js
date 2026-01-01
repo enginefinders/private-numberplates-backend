@@ -21,7 +21,8 @@ export default async function handler(req, res) {
     }
 
     // ✅ SAVE BACKUP (DIRECT SAVE)
-    await Backup.create(body);
+     const backup = await Backup.create(body); 
+    console.log("Backup saved:", backup._id);
 
     // ---------------- EMAIL ----------------
     const meta_data = [];
