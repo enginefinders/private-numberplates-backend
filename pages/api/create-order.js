@@ -44,8 +44,8 @@ export default async function handler(req, res) {
 
     // Build order object
     const orderBody = {
-     payment_method: 'cod',
-payment_method_title: 'Cash on Delivery',
+     payment_method: 'stripe',
+payment_method_title: 'Stripe',
 set_paid: false,
       billing: { email: customer_email || 'guest@example.com' },
       line_items: [
@@ -69,7 +69,7 @@ set_paid: false,
 
     return res.status(200).json({
       placed: true,
-      status_text: "Order created, awaiting payment",
+      status_text: "Order created",
       order,
       payUrl
     });

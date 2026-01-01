@@ -21,7 +21,18 @@ export default async function handler(req, res) {
 
     // WooCommerce REST API endpoint
     const endpoint = `${WP_URL}/wp-json/wc/v3/orders`;
-
+const wordpress_display = [
+      { key: 'Plate Type', value: plate_config.plate_type },
+      { key: 'Size', value: plate_config.size },
+      { key: 'Sides', value: plate_config.sides },
+      { key: 'Text', value: plate_config.text },
+      { key: 'Font', value: plate_config.font },
+      { key: 'Legal Type', value: plate_config.legal_type || 'road_legal' },
+      { key: 'Base Price', value: plate_config.pricing_breakdown?.base ?? 0 },
+      { key: '3D Gel', value: plate_config.pricing_breakdown?.gel3d ?? 0 },
+      { key: '4D Raised', value: plate_config.pricing_breakdown?.raised4d ?? 0 },
+      { key: 'Total Price', value: plate_config.total ?? 0 }
+    ];
     // Prepare WooCommerce order data
     const orderData = {
       payment_method: "cod",
@@ -55,8 +66,8 @@ export default async function handler(req, res) {
     quantity: 1,
     meta_data: [
       {
-        key: "plate_config",
-        value: JSON.stringify(plate_config),
+        key: "Order Details",
+        value: JSON.stringify(wordpress_display),
       },
     ],
   },
