@@ -35,9 +35,9 @@ const wordpress_display = [
     ];
     // Prepare WooCommerce order data
     const orderData = {
-      payment_method: "cod",
-      payment_method_title: "Cash on delivery",
-      set_paid: false,
+      payment_method: "stripe",
+      payment_method_title: "Stripe",
+      set_paid: true,
       billing: {
         first_name: customer.firstName,
         last_name: customer.lastName,
