@@ -28,7 +28,7 @@ const meta_data = [
       { key: "Hex Plate", value: plate_config.hexPlate ? "Yes" : "No"},
       { key: 'Sides', value: plate_config.sides },
       { key: 'Badge', value: plate_config.badge.type},
-      { key: 'Border', value: plate_config.border.borderSelected ? borderColor : "Not Selected"},
+      { key: 'Border', value: plate_config.border.borderSelected ? plate_config.border.borderColor : "Not Selected"},
       { key: 'Legal Type', value: plate_config.legal_type || 'road_legal' },
       { key: 'Free Kit', value: plate_config.freeKit.pads ? "Sticky Pads x6" : plate_config.freeKit.pads ? "Self Taping Screws With Screw Caps" : "None Selected"},
       { key: 'Total Price', value: plate_config.total ?? 0 }
