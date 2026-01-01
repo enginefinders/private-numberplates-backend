@@ -67,7 +67,7 @@ const wordpress_display = [
     meta_data: [
       {
         key: "Order Details",
-        value: JSON.stringify(wordpress_display),
+        value: wordpress_display,
       },
     ],
   },
