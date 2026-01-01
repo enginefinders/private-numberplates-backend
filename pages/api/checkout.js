@@ -83,7 +83,28 @@ await resend.emails.send({
   from: 'Order <onboarding@resend.dev>',
   to: 'order.pnpm@gmail.com',
   subject: `Order recieved from ${customer.firstName}`,
-  html: `${meta_data}`
+  html: `<div>
+  <h1>Order Details</h1><br />
+  <h2>Customer Details</h2><br />
+  <b>First Name:</b> ${customer.firstName}<br />
+  <b>Last Name:</b> ${customer.lastName}<br />
+  <b>Email Address:</b> ${customer.email}<br />
+  <b>Phone Number:</b> ${customer.phone}<br />
+  <b>Address 1:</b> ${customer.address1}<br />
+  <b>Address 2:</b> ${customer.address2}<br />
+  <b>City:</b> ${customer.city}<br />
+  <b>Postcode:</b> ${customer.postcode}<br />
+  <br />
+  <h2>Number Plate Details</h2>
+    <b>Plate Type:</b> ${plate_config.plate_type}<br />
+  <b>Text:</b> ${plate_config.text}<br />
+  <b>Plate Size:</b> ${plate_config.plate_size}<br />
+  ${plate_config.hexPlate && (`<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"}`)}<br />
+  <b>Legality:</b> ${plate_config.legal_type}<br />
+  <b>Sides:</b> ${plate_config.sides}<br />
+  <b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />
+  <b>Free Kit:</b> ${plate_config.freeKit.pads ? "Sticky pad x6" : "Self Taping Screws with Screw Caps"}<br />
+  </div>`
 });
 
     // Prepare WooCommerce order data
