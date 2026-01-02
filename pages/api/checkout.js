@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, quantity } = body;
+    const { customer, plate_config, quantity, paymentMethod } = body;
 
     if (!customer || !plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -48,6 +48,9 @@ export default async function handler(req, res) {
         key: "Free Kit",
         value: "Self Taping Screws With Screw Caps",
       });
+          if(paymentMethod)
+      meta_data.push({key: "Payment Method", value: paymentMethod});
+
 if (plate_config.total != null) {
   meta_data.push({ key: "Total Price", value: plate_config.total });
 }
@@ -68,8 +71,9 @@ await resend.emails.send({
   <b>Address 2:</b> ${customer.address2}<br />
   <b>City:</b> ${customer.city}<br />
   <b>Postcode:</b> ${customer.postcode}<br />
+  <b>Payment Method:</b> ${paymentMethod}<br />
   <br />
-  <h2>Number Plate Details</h2>
+  <h2>Product Details</h2>
     <b>Plate Type:</b> ${plate_config.plate_type}<br />
   <b>Text:</b> ${plate_config.text}<br />
   <b>Plate Size:</b> ${plate_config.plate_size}<br />
