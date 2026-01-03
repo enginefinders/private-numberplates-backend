@@ -8,7 +8,21 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
+const formatLabel = (input) => {
+  return input
+    .trim()
+    // split on underscores, hyphens, or one/more spaces
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map(word => {
+      // Capitalize only if the word starts with a letter
+      if (/^[a-zA-Z]/.test(word)) {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }
+      return word; // numbers or mixed starting with number
+    })
+    .join(" ");
+}
   try {
     // ✅ CONNECT DB
     await connectDB();
@@ -29,13 +43,13 @@ export default async function handler(req, res) {
     const meta_data = [];
 
     if (plate_config.text)
-      meta_data.push({ key: "Text", value: plate_config.text });
+      meta_data.push({ key: "Text", value: formatLabel(plate_config.text) });
 
     if (plate_config.plate_type)
-      meta_data.push({ key: "Plate Type", value: plate_config.plate_type });
+      meta_data.push({ key: "Plate Type", value: formatLabel(plate_config.plate_type) });
 
     if (plate_config.sides)
-      meta_data.push({ key: "Sides", value: plate_config.sides });
+      meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
 
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
@@ -49,10 +63,10 @@ export default async function handler(req, res) {
         value: "Self Taping Screws With Screw Caps",
       });
           if(paymentMethod)
-      meta_data.push({key: "Payment Method", value: paymentMethod});
+      meta_data.push({key: "Payment Method", value: formatLabel(paymentMethod)});
 
 if (plate_config.total != null) {
-  meta_data.push({ key: "Total Price", value: plate_config.total });
+  meta_data.push({ key: "Total Price", value: formatLabel(plate_config.total) });
 }
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -74,12 +88,12 @@ await resend.emails.send({
   <b>Payment Method:</b> ${paymentMethod}<br />
   <br />
   <h2>Product Details</h2>
-    <b>Plate Type:</b> ${plate_config.plate_type}<br />
-  <b>Text:</b> ${plate_config.text}<br />
-  <b>Plate Size:</b> ${plate_config.plate_size}<br />
+    <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
+  <b>Text:</b> ${formatLabel(plate_config.text)}<br />
+  <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
   ${plate_config.hexPlate ? (`<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />`) : (" ")}
-  <b>Legality:</b> ${plate_config.legal_type}<br />
-  <b>Sides:</b> ${plate_config.sides}<br />
+  <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
+  <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
   ${plate_config.border.borderSelected ? (`<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />`) : (" ")}
   <b>Free Kit:</b> ${plate_config.freeKit.pads ? "Sticky pad x6" : "Self Taping Screws with Screw Caps"}<br />
   </div>`
