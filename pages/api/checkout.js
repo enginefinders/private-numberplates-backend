@@ -38,7 +38,7 @@ const formatLabel = (input) => {
      const Backup = getBackupModel(); // ✅ always get the model safely
 
   const bodys = req.body;
-  const backup = await Backup.create(bodys);
+
     // ---------------- EMAIL ----------------
     const meta_data = [];
 
@@ -51,6 +51,9 @@ const formatLabel = (input) => {
     if (plate_config.sides)
       meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
 
+    if (quantity)
+      meta_data.push({ key: "Quantity", value: quantity > 1 && `<b>Quantity:</b>${quantity}<br />`});
+
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
 
@@ -62,12 +65,20 @@ const formatLabel = (input) => {
         key: "Free Kit",
         value: "Self Taping Screws With Screw Caps",
       });
+
+    if (plate_config.freeKit?.pads)
+      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
+
+
           if(paymentMethod)
       meta_data.push({key: "Payment Method", value: formatLabel(paymentMethod)});
 
 if (plate_config.total != null) {
   meta_data.push({ key: "Total Price", value: plate_config.total });
 }
+
+  const backup = await Backup.create(customer, plate_config, quantity);
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 await resend.emails.send({
@@ -88,6 +99,7 @@ await resend.emails.send({
   <b>Payment Method:</b> ${paymentMethod}<br />
   <br />
   <h2>Product Details</h2>
+  ${quantity > 1 && `<b>Quantity:</b>${quantity}<br />`}
     <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
   <b>Text:</b> ${formatLabel(plate_config.text)}<br />
   <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
