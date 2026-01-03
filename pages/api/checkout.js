@@ -38,7 +38,7 @@ const formatLabel = (input) => {
      const Backup = getBackupModel(); // ✅ always get the model safely
 
   const bodys = req.body;
-
+  const backup = await Backup.create(bodys);
     // ---------------- EMAIL ----------------
     const meta_data = [];
 
@@ -76,9 +76,6 @@ const formatLabel = (input) => {
 if (plate_config.total != null) {
   meta_data.push({ key: "Total Price", value: plate_config.total });
 }
-
-  const backup = await Backup.create(customer, plate_config, quantity);
-
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 await resend.emails.send({
