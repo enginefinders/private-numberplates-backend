@@ -66,7 +66,7 @@ const formatLabel = (input) => {
       meta_data.push({key: "Payment Method", value: formatLabel(paymentMethod)});
 
 if (plate_config.total != null) {
-  meta_data.push({ key: "Total Price", value: formatLabel(plate_config.total) });
+  meta_data.push({ key: "Total Price", value: plate_config.total });
 }
 const resend = new Resend(process.env.RESEND_API_KEY);
 
