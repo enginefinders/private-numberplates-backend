@@ -44,19 +44,24 @@ export default async function handler(req, res) {
     // ---------------- EMAIL ----------------
     const meta_data = [];
 
-
     if (plate_config.plate_type)
       meta_data.push({
         key: "Plate Type",
         value: formatLabel(plate_config.plate_type),
       });
     if (plate_config.text)
-      meta_data.push({ key: "Reg Number", value: formatLabel(plate_config.text.toUpperCase()) });
+      meta_data.push({
+        key: "Reg Number",
+        value: formatLabel(plate_config.text.toUpperCase()),
+      });
 
     if (plate_config.sides)
       meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
     if (plate_config.legal_type)
-      meta_data.push({ key: "Legality", value: formatLabel(plate_config.legal_type) });
+      meta_data.push({
+        key: "Legality",
+        value: formatLabel(plate_config.legal_type),
+      });
 
     if (quantity)
       meta_data.push({
@@ -71,7 +76,7 @@ export default async function handler(req, res) {
     if (plate_config.border.borderSelected)
       meta_data.push({ key: "Border", value: "Black" });
     if (plate_config.plate_size)
-      meta_data.push({ key: "Border", value: plate_config.plate_size });
+      meta_data.push({ key: "Plate Size", value: plate_config.plate_size });
 
     if (plate_config.freeKit?.pads)
       meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
