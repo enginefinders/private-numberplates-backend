@@ -5,24 +5,26 @@ import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
-const formatLabel = (input) => {
-  return input
-    .trim()
-    // split on underscores, hyphens, or one/more spaces
-    .split(/[_\-\s]+/)
-    .filter(Boolean)
-    .map(word => {
-      // Capitalize only if the word starts with a letter
-      if (/^[a-zA-Z]/.test(word)) {
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      }
-      return word; // numbers or mixed starting with number
-    })
-    .join(" ");
-}
+  const formatLabel = (input) => {
+    return (
+      input
+        .trim()
+        // split on underscores, hyphens, or one/more spaces
+        .split(/[_\-\s]+/)
+        .filter(Boolean)
+        .map((word) => {
+          // Capitalize only if the word starts with a letter
+          if (/^[a-zA-Z]/.test(word)) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+          }
+          return word; // numbers or mixed starting with number
+        })
+        .join(" ")
+    );
+  };
   try {
     // ✅ CONNECT DB
     await connectDB();
@@ -30,32 +32,46 @@ const formatLabel = (input) => {
     const body = req.body;
     const { customer, plate_config, quantity, paymentMethod } = body;
 
-    if (!customer || !plate_config) {
+    if (!plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-      // ✅ SAVE BACKUP (DIRECT SAVE)
-     const Backup = getBackupModel(); // ✅ always get the model safely
+    // ✅ SAVE BACKUP (DIRECT SAVE)
+    const Backup = getBackupModel(); // ✅ always get the model safely
 
-  const bodys = req.body;
-  const backup = await Backup.create(bodys);
+    const bodys = req.body;
+    const backup = await Backup.create(bodys);
     // ---------------- EMAIL ----------------
     const meta_data = [];
 
-    if (plate_config.text)
-      meta_data.push({ key: "Text", value: formatLabel(plate_config.text) });
 
     if (plate_config.plate_type)
-      meta_data.push({ key: "Plate Type", value: formatLabel(plate_config.plate_type) });
+      meta_data.push({
+        key: "Plate Type",
+        value: formatLabel(plate_config.plate_type),
+      });
+    if (plate_config.text)
+      meta_data.push({ key: "Reg Number", value: formatLabel(plate_config.text.toUpperCase()) });
 
     if (plate_config.sides)
       meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
+    if (plate_config.legal_type)
+      meta_data.push({ key: "Legality", value: formatLabel(plate_config.legal_type) });
 
     if (quantity)
-      meta_data.push({ key: "Quantity", value: quantity > 1 && `<b>Quantity:</b>${quantity}<br />`});
+      meta_data.push({
+        key: "Quantity",
+        value: quantity > 1 && `<b>Quantity:</b>${quantity}<br />`,
+      });
 
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
+    if (plate_config.badge)
+      meta_data.push({ key: "Badge", value: plate_config.badge });
+    if (plate_config.border.borderSelected)
+      meta_data.push({ key: "Border", value: "Black" });
+    if (plate_config.plate_size)
+      meta_data.push({ key: "Border", value: plate_config.plate_size });
 
     if (plate_config.freeKit?.pads)
       meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
@@ -69,20 +85,22 @@ const formatLabel = (input) => {
     if (plate_config.freeKit?.pads)
       meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
 
+    if (paymentMethod)
+      meta_data.push({
+        key: "Payment Method",
+        value: formatLabel(paymentMethod),
+      });
 
-          if(paymentMethod)
-      meta_data.push({key: "Payment Method", value: formatLabel(paymentMethod)});
+    if (plate_config.total != null) {
+      meta_data.push({ key: "Total Price", value: plate_config.total });
+    }
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-if (plate_config.total != null) {
-  meta_data.push({ key: "Total Price", value: plate_config.total });
-}
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-await resend.emails.send({
-  from: 'Order <onboarding@resend.dev>',
-  to: 'order.pnpm@gmail.com',
-  subject: `Order recieved from ${customer.firstName}`,
-  html: `<div>
+    await resend.emails.send({
+      from: "Order <onboarding@resend.dev>",
+      to: "order.pnpm@gmail.com",
+      subject: `Order recieved from ${customer.firstName}`,
+      html: `<div>
   <h1>Order Details</h1><br />
   <h2>Customer Details</h2><br />
   <b>First Name:</b> ${customer.firstName}<br />
@@ -100,14 +118,14 @@ await resend.emails.send({
     <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
   <b>Text:</b> ${formatLabel(plate_config.text)}<br />
   <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
-  ${plate_config.hexPlate ? (`<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />`) : (" ")}
+  ${plate_config.hexPlate ? `<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />` : " "}
   <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
   <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
-  ${plate_config.border.borderSelected ? (`<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />`) : (" ")}
+  ${plate_config.border.borderSelected ? `<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />` : " "}
   <b>Free Kit:</b> ${plate_config.freeKit.pads ? "Sticky pad x6" : "Self Taping Screws with Screw Caps"}<br />
-  </div>`
-});
- const endpoint = `${process.env.WP_URL}/wp-json/wc/v3/orders`;
+  </div>`,
+    });
+    const endpoint = `${process.env.WP_URL}/wp-json/wc/v3/orders`;
     // Prepare WooCommerce order data
     const orderData = {
       payment_method: "stripe",
