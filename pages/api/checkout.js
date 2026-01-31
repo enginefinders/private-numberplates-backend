@@ -118,16 +118,36 @@ export default async function handler(req, res) {
   <b>Postcode:</b> ${customer.postcode}<br />
   <b>Payment Method:</b> ${paymentMethod}<br />
   <br />
+    <hr />
   <h2>Product Details</h2>
-  ${quantity > 1 && `<b>Quantity:</b>${quantity}<br />`}
-    <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
-  <b>Text:</b> ${formatLabel(plate_config.text)}<br />
+
+  <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
+  <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
   <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
-  ${plate_config.hexPlate ? `<b>Hex Plate:</b> ${plate_config.hexPlate && "Selected"} <br />` : " "}
   <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
   <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
-  ${plate_config.border.borderSelected ? `<b>Border:</b> ${plate_config.border.borderSelected && "Selected Black"}<br />` : " "}
-  <b>Free Kit:</b> ${plate_config.freeKit.pads ? "Sticky pad x6" : "Self Taping Screws with Screw Caps"}<br />
+  <b>Quantity:</b> ${quantity}<br />
+
+  <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
+  <b>Badge:</b> ${plate_config.badge || "None"}<br />
+  <b>Border:</b> ${
+    plate_config.border?.borderSelected ? "Black Border Selected" : "None"
+  }<br />
+
+  <b>Free Kit:</b>
+  ${
+    plate_config.freeKit?.pads
+      ? "Sticky Pads x6"
+      : plate_config.freeKit?.screws
+      ? "Self Tapping Screws with Caps"
+      : "None"
+  }
+  <br />
+
+  <hr />
+
+  <h2>Pricing</h2>
+  <b>Total Price:</b> £${plate_config.total}<br />
   </div>`,
     });
     const endpoint = `${process.env.WP_URL}/wp-json/wc/v3/orders`;
