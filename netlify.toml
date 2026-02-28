@@ -6,8 +6,6 @@
   package = "@netlify/plugin-nextjs"
 
 [[headers]]
-  for = "/api/*"
+  for = "/*"
   [headers.values]
-    Access-Control-Allow-Origin = "https://plate-maker.co.uk"
-    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    access-control-allow-origin = "https://plate-maker.co.uk"
