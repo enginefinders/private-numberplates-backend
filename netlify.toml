@@ -8,6 +8,6 @@
 [[headers]]
   for = "/api/*"
   [headers.values]
-    Access-Control-Allow-Origin = "https://private-numberplates.netlify.app"
+    Access-Control-Allow-Origin = "https://plate-maker.co.uk"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
     Access-Control-Allow-Headers = "Content-Type, Authorization"
