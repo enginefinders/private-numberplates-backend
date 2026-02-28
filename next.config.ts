@@ -1,4 +1,4 @@
-// next.config.js
+// next.config.ts
 module.exports = {
   async headers() {
     return [

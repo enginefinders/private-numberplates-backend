@@ -6,6 +6,9 @@ const WC_AUTH = { username: process.env.WC_KEY, password: process.env.WC_SECRET 
 console.log('WP_URL is:', WP_URL);
 
 export default async function handler(req, res) {
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end(); 
+  }
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
