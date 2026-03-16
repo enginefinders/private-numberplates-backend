@@ -46,9 +46,7 @@ export default async function handler(req, res) {
     const makeALead = await lead.create(bodys);
 
     return res.status(200).json({
-      success: true,
-      order: response.data,
-    });
+      success: true,    });
   } catch (error) {
     console.error("Checkout error:", error.response?.data || error.message);
 
