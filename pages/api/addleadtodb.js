@@ -1,8 +1,8 @@
-// pages/api/checkout.js
+// pages/api/addleadtodb.js
 import axios from "axios";
-import { Resend } from "resend";
 import connectDB from "@/lib/mongodb";
 import getLeadsModel from "@/lib/leadModel";
+import { Resend } from "resend";
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
@@ -33,12 +33,112 @@ export default async function handler(req, res) {
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, quantity, paymentMethod } = body;
+    const { customer, plate_config, quantity } = body;
 
     if (!plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+    const meta_data = [];
 
+    if (plate_config.plate_type)
+      meta_data.push({
+        key: "Plate Type",
+        value: formatLabel(plate_config.plate_type),
+      });
+    if (plate_config.text)
+      meta_data.push({
+        key: "Reg Number",
+        value: formatLabel(plate_config.text.toUpperCase()),
+      });
+
+    if (plate_config.sides)
+      meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
+    if (plate_config.legal_type)
+      meta_data.push({
+        key: "Legality",
+        value: formatLabel(plate_config.legal_type),
+      });
+
+    if (quantity)
+      meta_data.push({
+        key: "Quantity",
+        value: quantity > 1 && `<b>Quantity:</b>${quantity}<br />`,
+      });
+
+    if (plate_config.hexPlate)
+      meta_data.push({ key: "Hex Plate", value: "Yes" });
+    if (plate_config.badge)
+      meta_data.push({ key: "Badge", value: plate_config.badge });
+    if (plate_config.border.borderSelected)
+      meta_data.push({ key: "Border", value: "Black" });
+    if (plate_config.plate_size)
+      meta_data.push({ key: "Plate Size", value: plate_config.plate_size });
+
+    if (plate_config.freeKit?.pads)
+      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
+
+    if (plate_config.freeKit?.screws)
+      meta_data.push({
+        key: "Free Kit",
+        value: "Self Taping Screws With Screw Caps",
+      });
+
+    if (plate_config.freeKit?.pads)
+      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
+
+
+    if (plate_config.total != null) {
+      meta_data.push({ key: "Total Price", value: plate_config.total });
+    }
+    const resend = new Resend(process.env.RESEND_API_KEY2);
+    const mailConfirmation = await resend.emails.send({
+      from: "Lead <onboarding@resend.dev>",
+      to: "pnpm.leads@gmail.com",
+      subject: `Order recieved from ${customer.firstName}`,
+      html: `<div>
+  <h1>Order Details</h1><br />
+  <h2>Customer Details</h2><br />
+  <b>First Name:</b> ${customer.firstName}<br />
+  <b>Last Name:</b> ${customer.lastName}<br />
+  <b>Email Address:</b> ${customer.email}<br />
+  <b>Phone Number:</b> ${customer.phone}<br />
+  <b>Address 1:</b> ${customer.address1}<br />
+  <b>Address 2:</b> ${customer.address2}<br />
+  <b>City:</b> ${customer.city}<br />
+  <b>Postcode:</b> ${customer.postcode}<br />
+  <br />
+    <hr />
+  <h2>Product Details</h2>
+
+  <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
+  <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
+  <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
+  <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
+  <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
+  <b>Quantity:</b> ${quantity}<br />
+
+  <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
+  <b>Badge:</b> ${plate_config.badge || "None"}<br />
+  <b>Border:</b> ${
+    plate_config.border?.borderSelected ? "Black Border Selected" : "None"
+  }<br />
+
+  <b>Free Kit:</b>
+  ${
+    plate_config.freeKit?.pads
+      ? "Sticky Pads x6"
+      : plate_config.freeKit?.screws
+      ? "Self Tapping Screws with Caps"
+      : "None"
+  }
+  <br />
+
+  <hr />
+
+  <h2>Pricing</h2>
+  <b>Total Price:</b> £${plate_config.total}<br />
+  </div>`,
+    });
     // ✅ SAVE BACKUP (DIRECT SAVE)
     const lead = getLeadsModel(); // ✅ always get the model safely
 
@@ -46,7 +146,7 @@ export default async function handler(req, res) {
     const makeALead = await lead.create(bodys);
 
     return res.status(200).json({
-      success: true,    });
+      success: true,    mail: mailConfirmation});
   } catch (error) {
     console.error("Checkout error:", error.response?.data || error.message);
 
