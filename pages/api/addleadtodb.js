@@ -1,5 +1,4 @@
 // pages/api/addleadtodb.js
-import axios from "axios";
 import connectDB from "@/lib/mongodb";
 import getLeadsModel from "@/lib/leadModel";
 import { Resend } from "resend";
