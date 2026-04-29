@@ -78,9 +78,12 @@ export default async function handler(req, res) {
       meta_data.push({ key: "Badge", value: plate_config.badge });
     if (plate_config.border.borderSelected)
       meta_data.push({ key: "Border", value: "Black" });
-    if (plate_config.plate_size)
+    if (plate_config.sides === "both") {
+      meta_data.push({ key: "Front Plate Size", value: plate_config.front_plate_size });
+      meta_data.push({ key: "Rear Plate Size", value: plate_config.rear_plate_size });
+    } else {
       meta_data.push({ key: "Plate Size", value: plate_config.plate_size });
-
+    }
     if (plate_config.freeKit?.pads)
       meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
 
@@ -126,7 +129,15 @@ export default async function handler(req, res) {
 
   <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
   <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
-  <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
+  ${plate_config.sides === "both"
+  ? `
+    <b>Front Plate Size:</b> ${formatLabel(plate_config.front_plate_size)}<br />
+    <b>Rear Plate Size:</b> ${formatLabel(plate_config.rear_plate_size)}<br />
+  `
+  : `
+    <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
+  `
+}
   <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
   <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
   <b>Quantity:</b> ${quantity}<br />
