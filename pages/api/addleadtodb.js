@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, quantity } = body;
+    const { customer, plate_config, Fquantity, Rquantity, } = body;
 
     if (!plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -58,11 +58,18 @@ export default async function handler(req, res) {
         value: formatLabel(plate_config.legal_type),
       });
 
-    if (quantity)
+      if(Fquantity > 0){
       meta_data.push({
-        key: "Quantity",
-        value: quantity > 1 && `<b>Quantity:</b>${quantity}<br />`,
+        key: "Front Quantity",
+        value: {Fquantity},
       });
+      }
+      if(Rquantity > 0){
+      meta_data.push({
+        key: "Rear Quantity",
+        value: {Rquantity},
+      });
+      }
 
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
@@ -70,9 +77,12 @@ export default async function handler(req, res) {
       meta_data.push({ key: "Badge", value: plate_config.badge });
     if (plate_config.border.borderSelected)
       meta_data.push({ key: "Border", value: "Black" });
-    if (plate_config.plate_size)
-      meta_data.push({ key: "Plate Size", value: plate_config.plate_size });
-
+    if (plate_config.sides === "both") {
+      meta_data.push({ key: "Front Plate Size", value: plate_config.front_plate_size });
+      meta_data.push({ key: "Rear Plate Size", value: plate_config.rear_plate_size });
+    } else {
+      meta_data.push({ key: "Plate Size", value: (plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size) });
+    }
     if (plate_config.freeKit?.pads)
       meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
 
@@ -111,10 +121,19 @@ export default async function handler(req, res) {
 
   <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
   <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
-  <b>Plate Size:</b> ${formatLabel(plate_config.plate_size)}<br />
+  ${plate_config.sides === "both"
+  ? `
+    <b>Front Plate Size:</b> ${formatLabel(plate_config.front_plate_size)}<br />
+    <b>Rear Plate Size:</b> ${formatLabel(plate_config.rear_plate_size)}<br />
+  `
+  : `
+    <b>Plate Size:</b> ${formatLabel(plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size)}<br />
+  `
+}
   <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
   <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
-  <b>Quantity:</b> ${quantity}<br />
+${Fquantity > 0 ? `<b>Front Quantity:</b> ${Fquantity}<br />` : ''}
+${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
 
   <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
   <b>Badge:</b> ${plate_config.badge || "None"}<br />
