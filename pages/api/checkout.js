@@ -33,12 +33,12 @@ export default async function handler(req, res) {
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, Fquantity, Rquantity, paymentMethod } = body;
-
+    const { customer, plate_config, paymentMethod } = body;
     if (!plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-
+    const {Fquantity, Rquantity} = plate_config;
+    
     // ✅ SAVE BACKUP (DIRECT SAVE)
     const Backup = getBackupModel(); // ✅ always get the model safely
 
@@ -189,7 +189,7 @@ ${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
       line_items: [
         {
           product_id: Number(process.env.CUSTOM_PLATE_PRODUCT_ID),
-          quantity: Number((Fquantity + Rquantity)),
+          quantity: Number(Fquantity + Rquantity),
           meta_data,
         },
       ],
