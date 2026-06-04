@@ -1,7 +1,15 @@
 import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 6;
+
+function stripPreview(doc) {
+  const { preview_base64, ...rest } = doc;
+  return {
+    ...rest,
+    hasPreview: Boolean(preview_base64),
+  };
+}
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -15,15 +23,16 @@ export default async function handler(req, res) {
     await connectDB();
     const Backup = getBackupModel();
 
-    const [backups, total] = await Promise.all([
+    const [rawBackups, total] = await Promise.all([
       Backup.find()
-        .select("-preview_base64")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(PAGE_SIZE)
         .lean(),
       Backup.countDocuments(),
     ]);
+
+    const backups = rawBackups.map(stripPreview);
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 

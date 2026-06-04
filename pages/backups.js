@@ -1,6 +1,7 @@
+import Head from "next/head";
 import { useEffect, useState } from "react";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 6;
 
 export default function BackupsPage() {
   const [activeTab, setActiveTab] = useState("backups");
@@ -45,21 +46,57 @@ export default function BackupsPage() {
     fetchRecords();
   }, [page, activeTab]);
 
+  const shell = (
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <style jsx>{`
+        .record-list .record-card:not(:last-child) {
+          margin-bottom: 1rem;
+        }
+        @media (max-width: 768px) {
+          .record-list {
+            gap: 0 !important;
+          }
+          .record-list .record-card {
+            border: none !important;
+            border-radius: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin-bottom: 0 !important;
+          }
+          .record-list .record-card:not(:last-child) {
+            border-bottom: 1px solid #e5e5e5 !important;
+            padding-bottom: 1rem !important;
+            margin-bottom: 1rem !important;
+          }
+        }
+      `}</style>
+    </>
+  );
+
   if (loading) {
     return (
-      <main style={styles.main}>
-        <Tabs activeTab={activeTab} onChange={switchTab} />
-        <p>Loading…</p>
-      </main>
+      <>
+        {shell}
+        <main style={styles.main}>
+          <Tabs activeTab={activeTab} onChange={switchTab} />
+          <p>Loading…</p>
+        </main>
+      </>
     );
   }
 
   if (error) {
     return (
-      <main style={styles.main}>
-        <Tabs activeTab={activeTab} onChange={switchTab} />
-        <p style={{ color: "#b91c1c" }}>Error: {error}</p>
-      </main>
+      <>
+        {shell}
+        <main style={styles.main}>
+          <Tabs activeTab={activeTab} onChange={switchTab} />
+          <p style={{ color: "#b91c1c" }}>Error: {error}</p>
+        </main>
+      </>
     );
   }
 
@@ -72,78 +109,127 @@ export default function BackupsPage() {
     : "No lead records found.";
 
   return (
-    <main style={styles.main}>
-      <Tabs activeTab={activeTab} onChange={switchTab} />
-      <h1 style={styles.title}>{title}</h1>
-      <p style={styles.meta}>
-        Showing {start}–{end} of {total} (newest first)
-      </p>
+    <>
+      {shell}
+      <main style={styles.main}>
+        <Tabs activeTab={activeTab} onChange={switchTab} />
+        <h1 style={styles.title}>{title}</h1>
+        <p style={styles.meta}>
+          Showing {start}–{end} of {total} (newest first)
+        </p>
 
-      {records.length === 0 ? (
-        <p>{emptyMessage}</p>
-      ) : (
-        <div style={styles.list}>
-          {records.map((item) => (
-            <article key={item._id} style={styles.card}>
-              <h2 style={styles.cardTitle}>
-                {item.customer?.firstName} {item.customer?.lastName}
-              </h2>
-              <dl style={styles.dl}>
-                <Row label="Email" value={item.customer?.email} />
-                <Row label="Phone" value={item.customer?.phone} />
-                <Row label="City" value={item.customer?.city} />
-                <Row label="Postcode" value={item.customer?.postcode} />
-                <Row label="Reg text" value={item.plate_config?.text} />
-                <Row label="Plate type" value={item.plate_config?.plate_type} />
-                <Row label="Sides" value={item.plate_config?.sides} />
-                <Row
-                  label="Total"
-                  value={
-                    item.plate_config?.total != null
-                      ? `£${item.plate_config.total}`
-                      : "—"
-                  }
-                />
-                <Row label="Payment" value={item.paymentMethod} />
-                <Row label="Quantity" value={item.quantity} />
-                <Row
-                  label="Created"
-                  value={
-                    item.createdAt
-                      ? new Date(item.createdAt).toLocaleString()
-                      : "—"
-                  }
-                />
-              </dl>
-            </article>
-          ))}
-        </div>
-      )}
+        {records.length === 0 ? (
+          <p>{emptyMessage}</p>
+        ) : (
+          <div style={styles.list} className="record-list">
+            {records.map((item) => (
+              <RecordCard
+                key={item._id}
+                item={item}
+                isBackup={isBackups}
+              />
+            ))}
+          </div>
+        )}
 
-      {totalPages > 1 && (
-        <nav style={styles.pagination} aria-label="Pagination">
-          <button
-            type="button"
-            style={styles.pageBtn}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-          >
-            Previous
-          </button>
-          <span style={styles.pageInfo}>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            style={styles.pageBtn}
-            disabled={page >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </button>
-        </nav>
-      )}
-    </main>
+        {totalPages > 1 && (
+          <nav style={styles.pagination} aria-label="Pagination">
+            <button
+              type="button"
+              style={styles.pageBtn}
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              Previous
+            </button>
+            <span style={styles.pageInfo}>
+              Page {page} of {totalPages}
+            </span>
+            <button
+              type="button"
+              style={styles.pageBtn}
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </button>
+          </nav>
+        )}
+      </main>
+    </>
+  );
+}
+
+function RecordCard({ item, isBackup }) {
+  const c = item.customer || {};
+  const p = item.plate_config || {};
+  const kit = p.freeKit || {};
+
+  return (
+    <article style={styles.card} className="record-card">
+      <h2 style={styles.cardTitle}>
+        {c.firstName} {c.lastName}
+      </h2>
+      <dl style={styles.dl}>
+        <SectionLabel text="Order" />
+        <Row label="Product ID" value={item.product_id} />
+        <Row label="Quantity" value={item.quantity} />
+        {isBackup && <Row label="Payment method" value={item.paymentMethod} />}
+
+        <SectionLabel text="Customer" />
+        <Row label="First name" value={c.firstName} />
+        <Row label="Last name" value={c.lastName} />
+        <Row label="Email" value={c.email} />
+        <Row label="Phone" value={c.phone} />
+        <Row label="Address 1" value={c.address1} />
+        <Row label="Address 2" value={c.address2} />
+        <Row label="City" value={c.city} />
+        <Row label="Postcode" value={c.postcode} />
+        <Row label="Country" value={c.country} />
+
+        <SectionLabel text="Plate" />
+        <Row label="Plate type" value={p.plate_type} />
+        <Row label="Reg text" value={p.text} />
+        <Row label="Plate size" value={p.plate_size} />
+        <Row label="Sides" value={p.sides} />
+        <Row label="Hex plate" value={formatBool(p.hexPlate)} />
+        <Row label="Badge" value={p.badge} />
+        <Row label="Free kit — pads" value={formatBool(kit.pads)} />
+        <Row label="Free kit — screws" value={formatBool(kit.screws)} />
+        <Row
+          label="Total"
+          value={p.total != null ? `£${p.total}` : undefined}
+        />
+
+        <SectionLabel text="Record" />
+        <Row label="Has preview" value={item.hasPreview ? "Yes" : "No"} />
+        <Row
+          label="Created"
+          value={
+            item.createdAt
+              ? new Date(item.createdAt).toLocaleString()
+              : undefined
+          }
+        />
+        <Row
+          label="Updated"
+          value={
+            item.updatedAt
+              ? new Date(item.updatedAt).toLocaleString()
+              : undefined
+          }
+        />
+      </dl>
+    </article>
+  );
+}
+
+function SectionLabel({ text }) {
+  return (
+    <>
+      <dt style={styles.sectionDt}>{text}</dt>
+      <dd style={styles.sectionDd} />
+    </>
   );
 }
 
@@ -182,9 +268,20 @@ function Row({ label, value }) {
   return (
     <>
       <dt style={styles.dt}>{label}</dt>
-      <dd style={styles.dd}>{value ?? "—"}</dd>
+      <dd style={styles.dd}>{formatDisplay(value)}</dd>
     </>
   );
+}
+
+function formatBool(value) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return undefined;
+}
+
+function formatDisplay(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return value;
 }
 
 const styles = {
@@ -221,12 +318,20 @@ const styles = {
   cardTitle: { fontSize: "1.1rem", margin: "0 0 0.75rem" },
   dl: {
     display: "grid",
-    gridTemplateColumns: "120px 1fr",
+    gridTemplateColumns: "140px 1fr",
     gap: "0.35rem 0.75rem",
     margin: 0,
   },
+  sectionDt: {
+    gridColumn: "1 / -1",
+    fontWeight: 700,
+    color: "#222",
+    marginTop: "0.5rem",
+    fontSize: "0.9rem",
+  },
+  sectionDd: { display: "none", margin: 0 },
   dt: { fontWeight: 600, color: "#444" },
-  dd: { margin: 0 },
+  dd: { margin: 0, wordBreak: "break-word" },
   pagination: {
     display: "flex",
     alignItems: "center",
