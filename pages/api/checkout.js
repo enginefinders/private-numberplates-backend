@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     if (!plate_config) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-    const {Fquantity, Rquantity} = plate_config;
+    const {fQuantity, rQuantity} = plate_config;
     
     // ✅ SAVE BACKUP (DIRECT SAVE)
     const Backup = getBackupModel(); // ✅ always get the model safely
@@ -65,16 +65,16 @@ export default async function handler(req, res) {
         key: "Legality",
         value: formatLabel(plate_config.legal_type),
       });
-      if(Fquantity > 0){
+      if(fQuantity > 0){
       meta_data.push({
         key: "Front Quantity",
-        value: {Fquantity},
+        value: {fQuantity},
       });
       }
-      if(Rquantity > 0){
+      if(rQuantity > 0){
       meta_data.push({
         key: "Rear Quantity",
-        value: {Rquantity},
+        value: {rQuantity},
       });
       }
     if (plate_config.hexPlate)
@@ -145,8 +145,8 @@ export default async function handler(req, res) {
 }
   <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
   <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
-${Fquantity > 0 ? `<b>Front Quantity:</b> ${Fquantity}<br />` : ''}
-${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
+${fQuantity > 0 ? `<b>Front Quantity:</b> ${fQuantity}<br />` : ''}
+${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
   <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
   <b>Badge:</b> ${plate_config.badge || "None"}<br />
   <b>Border:</b> ${
@@ -189,7 +189,7 @@ ${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
       line_items: [
         {
           product_id: Number(process.env.CUSTOM_PLATE_PRODUCT_ID),
-          quantity: Fquantity + Rquantity,
+          quantity: fQuantity + rQuantity,
           meta_data,
         },
       ],
