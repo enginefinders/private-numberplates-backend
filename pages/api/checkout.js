@@ -189,7 +189,7 @@ ${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
       line_items: [
         {
           product_id: Number(process.env.CUSTOM_PLATE_PRODUCT_ID),
-          quantity: Number(Fquantity + Rquantity),
+          quantity: Fquantity + Rquantity,
           meta_data,
         },
       ],
