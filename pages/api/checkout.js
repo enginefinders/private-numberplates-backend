@@ -55,21 +55,18 @@ export default async function handler(req, res) {
     return (
       input
         .trim()
-        // split on underscores, hyphens, or one/more spaces
         .split(/[_\-\s]+/)
         .filter(Boolean)
         .map((word) => {
-          // Capitalize only if the word starts with a letter
           if (/^[a-zA-Z]/.test(word)) {
             return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
           }
-          return word; // numbers or mixed starting with number
+          return word;
         })
         .join(" ")
     );
   };
   try {
-    // ✅ CONNECT DB
     await connectDB();
 
     const body = req.body;
@@ -79,12 +76,10 @@ export default async function handler(req, res) {
     }
     const {fQuantity, rQuantity} = plate_config;
     
-    // ✅ SAVE BACKUP (DIRECT SAVE)
-    const Backup = getBackupModel(); // ✅ always get the model safely
+    const Backup = getBackupModel();
 
     const bodys = req.body;
     const backup = await Backup.create(bodys);
-    // ---------------- EMAIL ----------------
     const meta_data = [];
 
     if (plate_config.plate_type)
