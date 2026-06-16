@@ -4,6 +4,46 @@ import { Resend } from "resend";
 import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
 
+async function callWCAPIWithRetry(endpoint, orderData, maxRetries = 2) {
+  let lastError;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await axios.post(endpoint, orderData, {
+        auth: {
+          username: process.env.WC_KEY,
+          password: process.env.WC_SECRET,
+        },
+        timeout: 30000,
+      });
+
+      return response.data;
+    } catch (error) {
+      lastError = error;
+
+      console.error(`WC API attempt ${attempt + 1} failed:`, {
+        status: error?.response?.status,
+        data: error?.response?.data,
+        message: error?.message,
+      });
+
+      // Don't retry auth/client errors
+      if (error?.response?.status && error.response.status < 500) {
+        throw error;
+      }
+
+      // Exponential backoff
+      if (attempt < maxRetries) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * Math.pow(2, attempt))
+        );
+      }
+    }
+  }
+
+  throw lastError;
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end(); 
@@ -65,18 +105,19 @@ export default async function handler(req, res) {
         key: "Legality",
         value: formatLabel(plate_config.legal_type),
       });
-      if(fQuantity > 0){
-      meta_data.push({
-        key: "Front Quantity",
-        value: {fQuantity},
-      });
-      }
-      if(rQuantity > 0){
-      meta_data.push({
-        key: "Rear Quantity",
-        value: {rQuantity},
-      });
-      }
+if (fQuantity > 0) {
+  meta_data.push({
+    key: "Front Quantity",
+    value: String(fQuantity),
+  });
+}
+
+if (rQuantity > 0) {
+  meta_data.push({
+    key: "Rear Quantity",
+    value: String(rQuantity),
+  });
+}
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
     if (plate_config.badge)
@@ -89,18 +130,17 @@ export default async function handler(req, res) {
     } else {
       meta_data.push({ key: "Plate Size", value: (plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size) });
     }
-    if (plate_config.freeKit?.pads)
-      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
+if (plate_config.freeKit?.pads)
+  meta_data.push({
+    key: "Free Kit Pads",
+    value: "Sticky Pads x6",
+  });
 
-    if (plate_config.freeKit?.screws)
-      meta_data.push({
-        key: "Free Kit",
-        value: "Self Taping Screws With Screw Caps",
-      });
-
-    if (plate_config.freeKit?.pads)
-      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
-
+if (plate_config.freeKit?.screws)
+  meta_data.push({
+    key: "Free Kit Screws",
+    value: "Self Taping Screws With Screw Caps",
+  });
     if (paymentMethod)
       meta_data.push({
         key: "Payment Method",
@@ -108,7 +148,10 @@ export default async function handler(req, res) {
       });
 
     if (plate_config.total != null) {
-      meta_data.push({ key: "Total Price", value: plate_config.total });
+      meta_data.push({
+  key: "Total Price",
+  value: String(plate_config.total),
+});
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -169,6 +212,12 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
   <b>Total Price:</b> £${plate_config.total}<br />
   </div>`,
     });
+
+
+    const phoneDigitsOnly = String(customer.phone || "").replace(/\D/g, "");
+
+
+
     const endpoint = `${process.env.WP_URL}/wp-json/wc/v3/orders`;
     // Prepare WooCommerce order data
     const orderData = {
@@ -179,7 +228,7 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
         first_name: customer.firstName,
         last_name: customer.lastName,
         email: customer.email,
-        phone: String(customer.phone),
+        phone: phoneDigitsOnly,
         address_1: customer.address1,
         address_2: customer.address2 || "",
         city: customer.city,
@@ -201,23 +250,51 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
       ],
     };
 
-    const response = await axios.post(endpoint, orderData, {
-      auth: {
-        username: process.env.WC_KEY,
-        password: process.env.WC_SECRET,
-      },
-    });
-
-    return res.status(200).json({
-      success: true,
-      order: response.data,
-    });
+    // const response = await axios.post(endpoint, orderData, {
+    //   auth: {
+    //     username: process.env.WC_KEY,
+    //     password: process.env.WC_SECRET,
+    //   },
+    // });
+const response = await callWCAPIWithRetry(endpoint, orderData);
+return res.status(200).json({
+  success: true,
+  order: response,
+});
   } catch (error) {
-    console.error("Checkout error:", error.response?.data || error.message);
+  console.error("Checkout error:", {
+    message: error.message,
+    status: error?.response?.status,
+    data: error?.response?.data,
+    code: error.code,
+  });
 
-    return res.status(500).json({
-      error: "Checkout failed",
-      details: error.response?.data || error.message,
-    });
+  let errorMessage = "Checkout failed";
+  let statusCode = 500;
+
+  if (error?.response?.status === 401 || error?.response?.status === 403) {
+    errorMessage = "Authentication error with WooCommerce";
+    statusCode = 401;
+  } else if (error?.response?.status === 400) {
+    errorMessage =
+      error?.response?.data?.message || "Invalid order data";
+    statusCode = 400;
+  } else if (
+    error.code === "ECONNABORTED" ||
+    error.code === "ETIMEDOUT"
+  ) {
+    errorMessage =
+      "WooCommerce timeout - please try again";
+    statusCode = 504;
+  } else if (error?.response?.status >= 500) {
+    errorMessage =
+      "WooCommerce temporarily unavailable";
+    statusCode = 503;
   }
+
+  return res.status(statusCode).json({
+    error: errorMessage,
+    details: error?.response?.data || error.message,
+  });
+}
 }
