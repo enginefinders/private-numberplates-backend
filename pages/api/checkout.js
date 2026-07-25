@@ -208,7 +208,6 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
   </div>`,
     });
 
-
     const phoneDigitsOnly = String(customer.phone || "").replace(/\D/g, "");
 
 
@@ -252,6 +251,17 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
     //   },
     // });
 const response = await callWCAPIWithRetry(endpoint, orderData);
+
+try {
+  await axios.post(
+    `http://localhost:3000/api/document-mail`,
+    { ...req.body },
+  );
+} catch (docMailError) {
+  console.error("Document-mail trigger failed:", docMailError?.message);
+}
+
+
 return res.status(200).json({
   success: true,
   order: response,
