@@ -254,7 +254,7 @@ const response = await callWCAPIWithRetry(endpoint, orderData);
 
 try {
   await axios.post(
-    `http://localhost:3000/api/document-mail`,
+    `${process.env.BACKEND_URL}/api/document-mail`,
     { ...req.body },
   );
 } catch (docMailError) {
