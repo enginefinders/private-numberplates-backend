@@ -1,24 +1,49 @@
 // pages/api/document-mail.js
 import { Resend } from "resend";
+import { logAction } from "@/lib/monitoringLogger";
 
 export default async function handler(req, res) {
+  const startTime = Date.now();
+
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    const errorResponse = { error: "Method not allowed" };
+    await logAction({
+      endpoint: "/api/document-mail",
+      actionName: "Document Mail Rejected (Method Not Allowed)",
+      statusCode: 405,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: "Method not allowed",
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+    return res.status(405).json(errorResponse);
   }
 
   try {
-    const { customer, plate_config } = req.body;
+    const { customer, plate_config } = req.body || {};
 
     if (!customer || !plate_config) {
-      return res.status(400).json({ error: "Missing required fields" });
+      const errorResponse = { error: "Missing required fields" };
+      await logAction({
+        endpoint: "/api/document-mail",
+        actionName: "Document Mail Failed (Missing customer/plate_config)",
+        statusCode: 400,
+        requestData: req.body,
+        responseData: errorResponse,
+        error: "Missing required fields in request body",
+        durationMs: Date.now() - startTime,
+        req,
+      }).catch(console.error);
+      return res.status(400).json(errorResponse);
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await resend.emails.send({
+    const emailResult = await resend.emails.send({
       from: "orders@plate-maker.co.uk",
       to: `${customer.email}`,
       subject: `Action needed: documents required for your plate order`,
@@ -107,7 +132,19 @@ DVLA Registered Number Plate Supplier &bull; RNPS ID 75449
 `,
     });
 
-    return res.status(200).json({ success: true });
+    const successResponse = { success: true, emailId: emailResult?.data?.id };
+
+    await logAction({
+      endpoint: "/api/document-mail",
+      actionName: `Document Request Email Sent: ${customer.email} (${plate_config.text?.toUpperCase() || 'REG'})`,
+      statusCode: 200,
+      requestData: req.body,
+      responseData: successResponse,
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(200).json(successResponse);
   } catch (error) {
     console.error("Document-mail error:", {
       message: error.message,
@@ -115,9 +152,22 @@ DVLA Registered Number Plate Supplier &bull; RNPS ID 75449
       data: error?.response?.data,
     });
 
-    return res.status(500).json({
+    const errorResponse = {
       error: "Failed to send document request email",
       details: error?.response?.data || error.message,
-    });
+    };
+
+    await logAction({
+      endpoint: "/api/document-mail",
+      actionName: "Document Request Email Failed",
+      statusCode: 500,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: error?.message || "Failed to send document email",
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(500).json(errorResponse);
   }
 }

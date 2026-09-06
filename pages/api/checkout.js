@@ -3,6 +3,7 @@ import axios from "axios";
 import { Resend } from "resend";
 import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
+import { logAction } from "@/lib/monitoringLogger";
 
 async function callWCAPIWithRetry(endpoint, orderData, maxRetries = 2) {
   let lastError;
@@ -45,11 +46,24 @@ async function callWCAPIWithRetry(endpoint, orderData, maxRetries = 2) {
 }
 
 export default async function handler(req, res) {
+  const startTime = Date.now();
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end(); 
   }
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    const errorResponse = { error: "Method not allowed" };
+    await logAction({
+      endpoint: "/api/checkout",
+      actionName: "Checkout Rejected (Method Not Allowed)",
+      statusCode: 405,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: "Method not allowed",
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+    return res.status(405).json(errorResponse);
   }
   const formatLabel = (input) => {
     return (
@@ -70,9 +84,20 @@ export default async function handler(req, res) {
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, paymentMethod } = body;
+    const { customer, plate_config, paymentMethod } = body || {};
     if (!plate_config) {
-      return res.status(400).json({ error: "Missing required fields" });
+      const errorResponse = { error: "Missing required fields" };
+      await logAction({
+        endpoint: "/api/checkout",
+        actionName: "Checkout Failed (Missing plate_config)",
+        statusCode: 400,
+        requestData: req.body,
+        responseData: errorResponse,
+        error: "Missing required fields",
+        durationMs: Date.now() - startTime,
+        req,
+      }).catch(console.error);
+      return res.status(400).json(errorResponse);
     }
     const {fQuantity, rQuantity} = plate_config;
     
@@ -100,19 +125,19 @@ export default async function handler(req, res) {
         key: "Legality",
         value: formatLabel(plate_config.legal_type),
       });
-if (fQuantity > 0) {
-  meta_data.push({
-    key: "Front Quantity",
-    value: String(fQuantity),
-  });
-}
+    if (fQuantity > 0) {
+      meta_data.push({
+        key: "Front Quantity",
+        value: String(fQuantity),
+      });
+    }
 
-if (rQuantity > 0) {
-  meta_data.push({
-    key: "Rear Quantity",
-    value: String(rQuantity),
-  });
-}
+    if (rQuantity > 0) {
+      meta_data.push({
+        key: "Rear Quantity",
+        value: String(rQuantity),
+      });
+    }
     if (plate_config.hexPlate)
       meta_data.push({ key: "Hex Plate", value: "Yes" });
     if (plate_config.badge)
@@ -125,17 +150,39 @@ if (rQuantity > 0) {
     } else {
       meta_data.push({ key: "Plate Size", value: (plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size) });
     }
-if (plate_config.freeKit?.pads)
-  meta_data.push({
-    key: "Free Kit Pads",
-    value: "Sticky Pads x6",
-  });
 
-if (plate_config.freeKit?.screws)
-  meta_data.push({
-    key: "Free Kit Screws",
-    value: "Self Taping Screws With Screw Caps",
-  });
+    // Free Kit / Extras & Accessories Metadata
+    if (plate_config.freeKit?.pads)
+      meta_data.push({
+        key: "Free Kit Pads",
+        value: "Pack of 10 Sticky Pads",
+      });
+    if (plate_config.freeKit?.screws)
+      meta_data.push({
+        key: "Free Kit Screws",
+        value: "Screw Fixing Kit with Caps",
+      });
+    if (plate_config.freeKit?.velcro)
+      meta_data.push({
+        key: "Free Kit Velcro",
+        value: "Velcro Plate Holders",
+      });
+    if (plate_config.freeKit?.magnetic)
+      meta_data.push({
+        key: "Free Kit Magnetic",
+        value: "Magnetic Screw-On Holders",
+      });
+    if (plate_config.freeKit?.airFreshener)
+      meta_data.push({
+        key: "Free Kit Air Freshener",
+        value: "TurboJet Air Freshener",
+      });
+    if (plate_config.freeKit?.audiClips)
+      meta_data.push({
+        key: "Free Kit Audi Clips",
+        value: "Audi Honeycomb Grille Plate Holder Clips",
+      });
+
     if (paymentMethod)
       meta_data.push({
         key: "Payment Method",
@@ -144,9 +191,9 @@ if (plate_config.freeKit?.screws)
 
     if (plate_config.total != null) {
       meta_data.push({
-  key: "Total Price",
-  value: String(plate_config.total),
-});
+        key: "Total Price",
+        value: String(plate_config.total),
+      });
     }
     const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -194,9 +241,17 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
   <b>Free Kit:</b>
   ${
     plate_config.freeKit?.pads
-      ? "Sticky Pads x6"
+      ? "Pack of 10 Sticky Pads"
       : plate_config.freeKit?.screws
-      ? "Self Tapping Screws with Caps"
+      ? "Screw Fixing Kit with Caps"
+      : plate_config.freeKit?.velcro
+      ? "Velcro Plate Holders"
+      : plate_config.freeKit?.magnetic
+      ? "Magnetic Screw-On Holders"
+      : plate_config.freeKit?.airFreshener
+      ? "TurboJet Air Freshener"
+      : plate_config.freeKit?.audiClips
+      ? "Audi Honeycomb Grille Plate Holder Clips"
       : "None"
   }
   <br />
@@ -209,8 +264,6 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
     });
 
     const phoneDigitsOnly = String(customer.phone || "").replace(/\D/g, "");
-
-
 
     const endpoint = `${process.env.WP_URL}/wp-json/wc/v3/orders`;
     // Prepare WooCommerce order data
@@ -244,62 +297,80 @@ ${rQuantity > 0 ? `<b>Rear Quantity:</b> ${rQuantity}<br />` : ''}
       ],
     };
 
-    // const response = await axios.post(endpoint, orderData, {
-    //   auth: {
-    //     username: process.env.WC_KEY,
-    //     password: process.env.WC_SECRET,
-    //   },
-    // });
-const response = await callWCAPIWithRetry(endpoint, orderData);
+    const response = await callWCAPIWithRetry(endpoint, orderData);
 
-try {
-  await axios.post(
-    `${process.env.BACKEND_URL}/api/document-mail`,
-    { ...req.body },
-  );
-} catch (docMailError) {
-  console.error("Document-mail trigger failed:", docMailError?.message);
-}
+    try {
+      await axios.post(
+        `${process.env.BACKEND_URL}/api/document-mail`,
+        { ...req.body },
+      );
+    } catch (docMailError) {
+      console.error("Document-mail trigger failed:", docMailError?.message);
+    }
 
+    const successResponse = {
+      success: true,
+      order: response,
+    };
 
-return res.status(200).json({
-  success: true,
-  order: response,
-});
+    await logAction({
+      endpoint: "/api/checkout",
+      actionName: `Order Created & Ingested: ${customer?.firstName || ''} ${customer?.lastName || ''} (${plate_config?.text || 'REG'})`,
+      statusCode: 200,
+      requestData: req.body,
+      responseData: successResponse,
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(200).json(successResponse);
   } catch (error) {
-  console.error("Checkout error:", {
-    message: error.message,
-    status: error?.response?.status,
-    data: error?.response?.data,
-    code: error.code,
-  });
+    console.error("Checkout error:", {
+      message: error.message,
+      status: error?.response?.status,
+      data: error?.response?.data,
+      code: error.code,
+    });
 
-  let errorMessage = "Checkout failed";
-  let statusCode = 500;
+    let errorMessage = "Checkout failed";
+    let statusCode = 500;
 
-  if (error?.response?.status === 401 || error?.response?.status === 403) {
-    errorMessage = "Authentication error with WooCommerce";
-    statusCode = 401;
-  } else if (error?.response?.status === 400) {
-    errorMessage =
-      error?.response?.data?.message || "Invalid order data";
-    statusCode = 400;
-  } else if (
-    error.code === "ECONNABORTED" ||
-    error.code === "ETIMEDOUT"
-  ) {
-    errorMessage =
-      "WooCommerce timeout - please try again";
-    statusCode = 504;
-  } else if (error?.response?.status >= 500) {
-    errorMessage =
-      "WooCommerce temporarily unavailable";
-    statusCode = 503;
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      errorMessage = "Authentication error with WooCommerce";
+      statusCode = 401;
+    } else if (error?.response?.status === 400) {
+      errorMessage =
+        error?.response?.data?.message || "Invalid order data";
+      statusCode = 400;
+    } else if (
+      error.code === "ECONNABORTED" ||
+      error.code === "ETIMEDOUT"
+    ) {
+      errorMessage =
+        "WooCommerce timeout - please try again";
+      statusCode = 504;
+    } else if (error?.response?.status >= 500) {
+      errorMessage =
+        "WooCommerce temporarily unavailable";
+      statusCode = 503;
+    }
+
+    const errorResponse = {
+      error: errorMessage,
+      details: error?.response?.data || error.message,
+    };
+
+    await logAction({
+      endpoint: "/api/checkout",
+      actionName: `Checkout Failed (${statusCode})`,
+      statusCode,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: errorMessage,
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(statusCode).json(errorResponse);
   }
-
-  return res.status(statusCode).json({
-    error: errorMessage,
-    details: error?.response?.data || error.message,
-  });
-}
 }

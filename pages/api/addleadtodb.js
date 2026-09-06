@@ -2,175 +2,170 @@
 import connectDB from "@/lib/mongodb";
 import getLeadsModel from "@/lib/leadModel";
 import { Resend } from "resend";
+import { logAction } from "@/lib/monitoringLogger";
 
 export default async function handler(req, res) {
+  const startTime = Date.now();
+
   if (req.method === 'OPTIONS') {
     return res.status(200).end(); 
   }
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+    const errorResponse = { error: "Method not allowed" };
+    await logAction({
+      endpoint: "/api/addleadtodb",
+      actionName: "Lead Capture Rejected (Method Not Allowed)",
+      statusCode: 405,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: "Method not allowed",
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+    return res.status(405).json(errorResponse);
   }
+
   const formatLabel = (input) => {
     return (
-      input
+      (input || "")
         .trim()
-        // split on underscores, hyphens, or one/more spaces
         .split(/[_\-\s]+/)
         .filter(Boolean)
         .map((word) => {
-          // Capitalize only if the word starts with a letter
           if (/^[a-zA-Z]/.test(word)) {
             return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
           }
-          return word; // numbers or mixed starting with number
+          return word;
         })
         .join(" ")
     );
   };
+
   try {
     // ✅ CONNECT DB
     await connectDB();
 
     const body = req.body;
-    const { customer, plate_config, Fquantity, Rquantity, } = body;
+    const { customer, plate_config, Fquantity, Rquantity } = body || {};
 
     if (!plate_config) {
-      return res.status(400).json({ error: "Missing required fields" });
+      const errorResponse = { error: "Missing required fields" };
+      await logAction({
+        endpoint: "/api/addleadtodb",
+        actionName: "Lead Capture Failed (Missing plate_config)",
+        statusCode: 400,
+        requestData: req.body,
+        responseData: errorResponse,
+        error: "Missing required fields in body",
+        durationMs: Date.now() - startTime,
+        req,
+      }).catch(console.error);
+      return res.status(400).json(errorResponse);
     }
-    const meta_data = [];
 
-    if (plate_config.plate_type)
-      meta_data.push({
-        key: "Plate Type",
-        value: formatLabel(plate_config.plate_type),
-      });
-    if (plate_config.text)
-      meta_data.push({
-        key: "Reg Number",
-        value: formatLabel(plate_config.text.toUpperCase()),
-      });
+    const resend = new Resend(process.env.RESEND_API_KEY2 || process.env.RESEND_API_KEY);
+    let mailConfirmation = null;
+    try {
+      mailConfirmation = await resend.emails.send({
+        from: "Lead <onboarding@resend.dev>",
+        to: "pnpm.leads@gmail.com",
+        subject: `Order recieved from ${customer?.firstName || 'Customer'}`,
+        html: `<div>
+    <h1>Order Details</h1><br />
+    <h2>Customer Details</h2><br />
+    <b>First Name:</b> ${customer?.firstName}<br />
+    <b>Last Name:</b> ${customer?.lastName}<br />
+    <b>Email Address:</b> ${customer?.email}<br />
+    <b>Phone Number:</b> ${customer?.phone}<br />
+    <b>Address 1:</b> ${customer?.address1}<br />
+    <b>Address 2:</b> ${customer?.address2}<br />
+    <b>City:</b> ${customer?.city}<br />
+    <b>Postcode:</b> ${customer?.postcode}<br />
+    <br />
+      <hr />
+    <h2>Product Details</h2>
 
-    if (plate_config.sides)
-      meta_data.push({ key: "Sides", value: formatLabel(plate_config.sides) });
-    if (plate_config.legal_type)
-      meta_data.push({
-        key: "Legality",
-        value: formatLabel(plate_config.legal_type),
-      });
-
-      if(Fquantity > 0){
-      meta_data.push({
-        key: "Front Quantity",
-        value: {Fquantity},
-      });
-      }
-      if(Rquantity > 0){
-      meta_data.push({
-        key: "Rear Quantity",
-        value: {Rquantity},
-      });
-      }
-
-    if (plate_config.hexPlate)
-      meta_data.push({ key: "Hex Plate", value: "Yes" });
-    if (plate_config.badge)
-      meta_data.push({ key: "Badge", value: plate_config.badge });
-    if (plate_config.border.borderSelected)
-      meta_data.push({ key: "Border", value: "Black" });
-    if (plate_config.sides === "both") {
-      meta_data.push({ key: "Front Plate Size", value: plate_config.front_plate_size });
-      meta_data.push({ key: "Rear Plate Size", value: plate_config.rear_plate_size });
-    } else {
-      meta_data.push({ key: "Plate Size", value: (plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size) });
-    }
-    if (plate_config.freeKit?.pads)
-      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
-
-    if (plate_config.freeKit?.screws)
-      meta_data.push({
-        key: "Free Kit",
-        value: "Self Taping Screws With Screw Caps",
-      });
-
-    if (plate_config.freeKit?.pads)
-      meta_data.push({ key: "Free Kit", value: "Sticky Pads x6" });
-
-
-    if (plate_config.total != null) {
-      meta_data.push({ key: "Total Price", value: plate_config.total });
-    }
-    const resend = new Resend(process.env.RESEND_API_KEY2);
-    const mailConfirmation = await resend.emails.send({
-      from: "Lead <onboarding@resend.dev>",
-      to: "pnpm.leads@gmail.com",
-      subject: `Order recieved from ${customer.firstName}`,
-      html: `<div>
-  <h1>Order Details</h1><br />
-  <h2>Customer Details</h2><br />
-  <b>First Name:</b> ${customer.firstName}<br />
-  <b>Last Name:</b> ${customer.lastName}<br />
-  <b>Email Address:</b> ${customer.email}<br />
-  <b>Phone Number:</b> ${customer.phone}<br />
-  <b>Address 1:</b> ${customer.address1}<br />
-  <b>Address 2:</b> ${customer.address2}<br />
-  <b>City:</b> ${customer.city}<br />
-  <b>Postcode:</b> ${customer.postcode}<br />
-  <br />
-    <hr />
-  <h2>Product Details</h2>
-
-  <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
-  <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
-  ${plate_config.sides === "both"
-  ? `
-    <b>Front Plate Size:</b> ${formatLabel(plate_config.front_plate_size)}<br />
-    <b>Rear Plate Size:</b> ${formatLabel(plate_config.rear_plate_size)}<br />
-  `
-  : `
-    <b>Plate Size:</b> ${formatLabel(plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size)}<br />
-  `
-}
-  <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
-  <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
-${Fquantity > 0 ? `<b>Front Quantity:</b> ${Fquantity}<br />` : ''}
-${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
-
-  <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
-  <b>Badge:</b> ${plate_config.badge || "None"}<br />
-  <b>Border:</b> ${
-    plate_config.border?.borderSelected ? "Black Border Selected" : "None"
-  }<br />
-
-  <b>Free Kit:</b>
-  ${
-    plate_config.freeKit?.pads
-      ? "Sticky Pads x6"
-      : plate_config.freeKit?.screws
-      ? "Self Tapping Screws with Caps"
-      : "None"
+    <b>Plate Type:</b> ${formatLabel(plate_config.plate_type)}<br />
+    <b>Registration Text:</b> ${plate_config.text?.toUpperCase()}<br />
+    ${plate_config.sides === "both"
+    ? `
+      <b>Front Plate Size:</b> ${formatLabel(plate_config.front_plate_size)}<br />
+      <b>Rear Plate Size:</b> ${formatLabel(plate_config.rear_plate_size)}<br />
+    `
+    : `
+      <b>Plate Size:</b> ${formatLabel(plate_config.sides === "front" ? plate_config.front_plate_size : plate_config.rear_plate_size)}<br />
+    `
   }
-  <br />
+    <b>Legality:</b> ${formatLabel(plate_config.legal_type)}<br />
+    <b>Sides:</b> ${formatLabel(plate_config.sides)}<br />
+  ${Fquantity > 0 ? `<b>Front Quantity:</b> ${Fquantity}<br />` : ''}
+  ${Rquantity > 0 ? `<b>Rear Quantity:</b> ${Rquantity}<br />` : ''}
 
-  <hr />
+    <b>Hex Plate:</b> ${plate_config.hexPlate ? "Yes" : "No"}<br />
+    <b>Badge:</b> ${plate_config.badge || "None"}<br />
+    <b>Border:</b> ${
+      plate_config.border?.borderSelected ? "Black Border Selected" : "None"
+    }<br />
 
-  <h2>Pricing</h2>
-  <b>Total Price:</b> £${plate_config.total}<br />
-  </div>`,
-    });
+    <b>Free Kit:</b>
+    ${
+      plate_config.freeKit?.pads
+        ? "Sticky Pads x6"
+        : plate_config.freeKit?.screws
+        ? "Self Tapping Screws with Caps"
+        : "None"
+    }
+    <br />
+
+    <hr />
+
+    <h2>Pricing</h2>
+    <b>Total Price:</b> £${plate_config.total}<br />
+    </div>`,
+      });
+    } catch (mailErr) {
+      console.warn("Lead email notification failed non-blockingly:", mailErr.message);
+    }
+
     // ✅ SAVE BACKUP (DIRECT SAVE)
-    const lead = getLeadsModel(); // ✅ always get the model safely
+    const lead = getLeadsModel();
+    const makeALead = await lead.create(req.body);
 
-    const bodys = req.body;
-    const makeALead = await lead.create(bodys);
+    const successResponse = {
+      success: true,
+      leadId: makeALead?._id,
+      mail: mailConfirmation,
+    };
 
-    return res.status(200).json({
-      success: true,    mail: mailConfirmation});
+    await logAction({
+      endpoint: "/api/addleadtodb",
+      actionName: `Lead Captured: ${customer?.firstName || ''} ${customer?.lastName || ''} (${plate_config?.text || 'REG'})`,
+      statusCode: 200,
+      requestData: req.body,
+      responseData: successResponse,
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(200).json(successResponse);
   } catch (error) {
-    console.error("Checkout error:", error.response?.data || error.message);
-
-    return res.status(500).json({
-      error: "Checkout failed",
+    console.error("Add lead error:", error.response?.data || error.message);
+    const errorResponse = {
+      error: "Lead capture failed",
       details: error.response?.data || error.message,
-    });
+    };
+
+    await logAction({
+      endpoint: "/api/addleadtodb",
+      actionName: "Lead Capture Exception",
+      statusCode: 500,
+      requestData: req.body,
+      responseData: errorResponse,
+      error: error.response?.data || error.message,
+      durationMs: Date.now() - startTime,
+      req,
+    }).catch(console.error);
+
+    return res.status(500).json(errorResponse);
   }
 }
