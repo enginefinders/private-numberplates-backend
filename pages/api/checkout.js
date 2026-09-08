@@ -189,6 +189,13 @@ export default async function handler(req, res) {
         value: formatLabel(paymentMethod),
       });
 
+    if (body.paymentIntentId) {
+      meta_data.push({
+        key: "Stripe Payment Intent ID",
+        value: String(body.paymentIntentId),
+      });
+    }
+
     if (plate_config.total != null) {
       meta_data.push({
         key: "Total Price",
@@ -213,6 +220,7 @@ export default async function handler(req, res) {
   <b>City:</b> ${customer.city}<br />
   <b>Postcode:</b> ${customer.postcode}<br />
   <b>Payment Method:</b> ${paymentMethod}<br />
+  ${body.paymentIntentId ? `<b>Stripe Payment Ref:</b> ${body.paymentIntentId}<br />` : ""}
   <br />
     <hr />
   <h2>Product Details</h2>
