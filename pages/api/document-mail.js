@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customer, plate_config } = req.body || {};
+    const { customer, plate_config, orderCode } = req.body || {};
 
     if (!customer || !plate_config) {
       const errorResponse = { error: "Missing required fields" };
@@ -42,86 +42,186 @@ export default async function handler(req, res) {
     }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
+    const displayOrderCode = orderCode || (plate_config?.text ? `PNPM-${plate_config.text.toUpperCase()}` : "PENDING");
+    const regText = (plate_config?.text || "").toUpperCase();
+    const firstName = customer?.firstName || "Valued Customer";
 
     const emailResult = await resend.emails.send({
       from: "orders@plate-maker.co.uk",
       to: `${customer.email}`,
-      subject: `Action needed: documents required for your plate order`,
+      subject: `Action Required: Upload Documents for Order ${displayOrderCode}`,
       html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Order Confirmed - Documents Required</title>
+<title>Action Required: Upload Documents for Order ${displayOrderCode}</title>
 </head>
-<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:Arial, Helvetica, sans-serif;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:30px 0;">
+<body style="margin:0; padding:0; background-color:#f4f4f4; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing:antialiased;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4; padding:30px 15px;">
 <tr>
 <td align="center">
-<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.06); border:1px solid #e5e7eb;">
 
-<!-- Header -->
-<tr>
-<td style="background-color:#F8C73A; padding:28px 32px;">
-<span style="color:#ffffff; font-size:22px; font-weight:bold; letter-spacing:0.5px;">Private Number Plate Maker</span>
-</td>
-</tr>
+  <!-- 1. Header Banner -->
+  <tr>
+    <td style="background-color:#F3C544; padding:24px 32px; border-bottom:3px solid #000000;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>
+            <span style="color:#000000; font-size:20px; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">
+              PRIVATE NUMBER PLATE MAKER
+            </span>
+          </td>
+          <td align="right">
+            <span style="background-color:#000000; color:#F3C544; font-size:10px; font-weight:800; padding:4px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px;">
+              RNPS #75449
+            </span>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
 
-<!-- Body -->
-<tr>
-<td style="padding:32px;">
-<p style="margin:0 0 16px; font-size:16px; color:#1a1a1a;">Hi ${customer.firstName},</p>
+  <!-- 2. Main Content -->
+  <tr>
+    <td style="padding:32px;">
+      <p style="margin:0 0 16px; font-size:16px; color:#111827; font-weight:600;">
+        Hi ${firstName},
+      </p>
 
-<p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#333333;">
-Your order for registration <strong>${plate_config.text?.toUpperCase()}</strong> has been placed. Thanks for choosing us.
-</p>
+      <p style="margin:0 0 20px; font-size:14px; line-height:1.6; color:#374151;">
+        Thank you for your order. Before we can manufacture and dispatch your plate for registration <strong>${regText}</strong>, the DVLA legally requires us to verify your proof of entitlement and identity.
+      </p>
 
-<p style="margin:0 0 20px; font-size:15px; line-height:1.6; color:#333333;">
-Before we can manufacture your plate, DVLA requires us to verify you're entitled to display this registration. Please reply to this email with the following documents:</p>
+      <!-- Order Reference Callout Box -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; margin:0 0 24px;">
+        <tr>
+          <td style="padding:16px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <span style="display:block; font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px;">Your Order ID</span>
+                  <span style="font-size:20px; font-weight:900; color:#111827; font-family:monospace; letter-spacing:1px;">${displayOrderCode}</span>
+                </td>
+                <td align="right">
+                  <span style="display:block; font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.5px;">Registration</span>
+                  <span style="background-color:#F3C544; color:#000000; font-size:14px; font-weight:900; font-family:monospace; padding:4px 10px; border-radius:4px; display:inline-block;">
+                    ${regText}
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
 
-<h3 style="margin:0 0 8px; font-size:15px; color:#0b1f3a;">1. Proof of entitlement (one of the following)</h3>
-<ul style="margin:0 0 20px; padding-left:20px; font-size:14px; line-height:1.7; color:#333333;">
-<li><strong>V5C logbook</strong> - clear photo of the full document, front and back</li>
-<li><strong>V778 retention certificate</strong> - for personalised registrations on hold</li>
-<li><strong>V750 certificate of entitlement</strong> - if you've bought the rights to a private plate</li>
-<li>Official government letter confirming number plate ownership or retention</li>
-</ul>
+      <!-- PRIMARY OPTION: ONLINE UPLOAD PORTAL -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FFFBEB; border:2px solid #F59E0B; border-radius:10px; margin:0 0 24px; overflow:hidden;">
+        <tr>
+          <td style="padding:20px 24px; text-align:center;">
+            <span style="display:inline-block; background-color:#F59E0B; color:#000000; font-size:11px; font-weight:800; padding:3px 10px; border-radius:12px; text-transform:uppercase; margin-bottom:8px; letter-spacing:0.5px;">
+              ⚡ Primary Option &bull; Fast-Track
+            </span>
+            <h3 style="margin:0 0 8px; font-size:17px; font-weight:800; color:#92400E;">
+              Submit Documents via Secure Portal
+            </h3>
+            <p style="margin:0 0 16px; font-size:13px; line-height:1.5; color:#78350F;">
+              Upload photos directly using your phone or computer for <strong>instant verification</strong> and immediate queueing into our manufacturing line.
+            </p>
 
-<h3 style="margin:0 0 8px; font-size:15px; color:#0b1f3a;">2. Proof of identity</h3>
-<ul style="margin:0 0 20px; padding-left:20px; font-size:14px; line-height:1.7; color:#333333;">
-<li>UK driving licence, or</li>
-<li>Passport</li>
-</ul>
+            <!-- Big Yellow CTA Button -->
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 12px;">
+              <tr>
+                <td style="border-radius:8px; background-color:#F3C544;">
+                  <a href="https://docs.plate-maker.co.uk/?order=${encodeURIComponent(displayOrderCode)}" target="_blank" style="display:inline-block; padding:14px 28px; font-size:15px; font-weight:900; color:#000000; text-decoration:none; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                    Upload Documents Online &rarr;
+                  </a>
+                </td>
+              </tr>
+            </table>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fdf2f2; border-left:4px solid #c8102e; margin:0 0 24px;">
-<tr>
-<td style="padding:14px 18px; font-size:13px; line-height:1.6; color:#7a1f1f;">
-<strong>Please note:</strong> Screenshots, photocopies, and emailed V5Cs sent as text/edited images are not valid. DVLA requires clear, original images of the physical documents.
-</td>
-</tr>
-</table>
+            <p style="margin:0; font-size:11px; color:#92400E;">
+              Portal Login: Enter your Order ID (<strong>${displayOrderCode}</strong>) and delivery postcode.
+            </p>
+          </td>
+        </tr>
+      </table>
 
-<p style="margin:0 0 4px; font-size:15px; color:#1a1a1a;">Once we've received and verified your documents, your plate will go straight into production.</p>
+      <!-- Required Documents Checklist -->
+      <h3 style="margin:0 0 12px; font-size:15px; font-weight:800; color:#111827; border-bottom:1px solid #E5E7EB; padding-bottom:6px;">
+        Required Documents (2 Items Needed)
+      </h3>
 
-<p style="margin:20px 0 0; font-size:14px; color:#333333;">Any questions, just mail us at  <a href="mailto:contact@plate-maker.co.uk">contact@plate-maker.co.uk</a> or call us on +442035766603.</p>
+      <div style="margin-bottom:16px;">
+        <p style="margin:0 0 4px; font-size:13px; font-weight:700; color:#1F2937;">
+          1. Proof of Entitlement (One of the following):
+        </p>
+        <ul style="margin:0; padding-left:20px; font-size:13px; line-height:1.6; color:#4B5563;">
+          <li><strong>V5C Logbook</strong> &ndash; Clear photo of page 2 & 3 or front/back</li>
+          <li><strong>V778 Retention Certificate</strong> &ndash; If on retention</li>
+          <li><strong>V750 Certificate of Entitlement</strong> &ndash; If bought new</li>
+          <li>Official Government / DVLA confirmation letter</li>
+        </ul>
+      </div>
 
-<p style="margin:24px 0 0; font-size:15px; color:#1a1a1a;">
-Thanks,<br>
-The Private Number Plate Maker Team
-</p>
-</td>
-</tr>
+      <div style="margin-bottom:20px;">
+        <p style="margin:0 0 4px; font-size:13px; font-weight:700; color:#1F2937;">
+          2. Proof of Personal Identity (One of the following):
+        </p>
+        <ul style="margin:0; padding-left:20px; font-size:13px; line-height:1.6; color:#4B5563;">
+          <li>UK Driving Licence (Full or Provisional)</li>
+          <li>Valid Passport</li>
+        </ul>
+      </div>
 
-<!-- Footer -->
-<tr>
-<td style="background-color:#f4f4f4; padding:20px 32px; text-align:center;">
-<p style="margin:0; font-size:12px; color:#888888;">
-Private Number Plate Maker Ltd &bull; 242 Eastern Ave, Ilford, Essex IG4 5AB<br>
-DVLA Registered Number Plate Supplier &bull; RNPS ID 75449
-</p>
-</td>
-</tr>
+      <!-- DVLA Compliance Note -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FEF2F2; border-left:4px solid #EF4444; border-radius:4px; margin:0 0 24px;">
+        <tr>
+          <td style="padding:12px 16px; font-size:12px; line-height:1.5; color:#991B1B;">
+            <strong>Physical Photo Requirement:</strong> Screenshots, digital PDFs, photocopies, or edited text files cannot be accepted under DVLA RNPS regulations. Please provide clear, glare-free photos of the actual physical documents.
+          </td>
+        </tr>
+      </table>
+
+      <!-- SECONDARY OPTION: EMAIL REPLY -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F9FAFB; border:1px solid #E5E7EB; border-radius:8px; margin:0 0 20px;">
+        <tr>
+          <td style="padding:16px 20px;">
+            <p style="margin:0 0 6px; font-size:13px; font-weight:700; color:#374151;">
+              ✉️ Secondary Option: Reply to this Email
+            </p>
+            <p style="margin:0; font-size:12px; line-height:1.6; color:#6B7280;">
+              Alternatively, you can reply directly to this email with your document photos attached.  
+              <span style="color:#B45309; font-weight:600;">(Please note: Manual email review requires verification by our team and can take up to 24&ndash;48 hours longer for approval).</span>
+            </p>
+          </td>
+        </tr>
+      </table>
+
+      <p style="margin:20px 0 0; font-size:13px; color:#4B5563;">
+        Questions or assistance needed? Reply to this email, contact us at <a href="mailto:contact@plate-maker.co.uk" style="color:#D97706; text-decoration:none; font-weight:600;">contact@plate-maker.co.uk</a>, or call <strong>+44 20 3576 6603</strong>.
+      </p>
+
+      <p style="margin:20px 0 0; font-size:14px; color:#111827; font-weight:600;">
+        Thank you,<br>
+        <span style="font-weight:400; color:#4B5563;">The Private Number Plate Maker Team</span>
+      </p>
+    </td>
+  </tr>
+
+  <!-- 3. Footer -->
+  <tr>
+    <td style="background-color:#F9FAFB; padding:20px 32px; border-top:1px solid #E5E7EB; text-align:center;">
+      <p style="margin:0 0 4px; font-size:11px; color:#6B7280; font-weight:600;">
+        Private Number Plate Maker Ltd &bull; 242 Eastern Ave, Ilford, Essex IG4 5AB
+      </p>
+      <p style="margin:0; font-size:11px; color:#9CA3AF;">
+        Registered Supplier RNPS ID 75449 &bull; Company #16500838 &bull; BS AU 145e Compliant
+      </p>
+    </td>
+  </tr>
 
 </table>
 </td>
