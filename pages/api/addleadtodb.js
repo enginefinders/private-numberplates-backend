@@ -109,10 +109,15 @@ export default async function handler(req, res) {
 
     <b>Free Kit:</b>
     ${
-      plate_config.freeKit?.pads
-        ? "Sticky Pads x6"
-        : plate_config.freeKit?.screws
-        ? "Self Tapping Screws with Caps"
+      plate_config.freeKit?.screws
+        ? "Screw Fixing Kit with Caps"
+        : "Pack of 10 Sticky Pads"
+    }
+    <br />
+    <b>Accessories:</b>
+    ${
+      Array.isArray(plate_config.accessories) && plate_config.accessories.length > 0
+        ? plate_config.accessories.map((a) => formatLabel(a)).join(", ")
         : "None"
     }
     <br />

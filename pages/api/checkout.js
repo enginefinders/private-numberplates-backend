@@ -114,18 +114,15 @@ export default async function handler(req, res) {
 
     <b>Free Kit:</b>
     ${
-      plate_config.freeKit?.pads
-        ? "Pack of 10 Sticky Pads"
-        : plate_config.freeKit?.screws
+      plate_config.freeKit?.screws
         ? "Screw Fixing Kit with Caps"
-        : plate_config.freeKit?.velcro
-        ? "Velcro Plate Holders"
-        : plate_config.freeKit?.magnetic
-        ? "Magnetic Screw-On Holders"
-        : plate_config.freeKit?.airFreshener
-        ? "TurboJet Air Freshener"
-        : plate_config.freeKit?.audiClips
-        ? "Audi Honeycomb Grille Plate Holder Clips"
+        : "Pack of 10 Sticky Pads"
+    }
+    <br />
+    <b>Accessories:</b>
+    ${
+      Array.isArray(plate_config.accessories) && plate_config.accessories.length > 0
+        ? plate_config.accessories.map((a) => formatLabel(a)).join(", ")
         : "None"
     }
     <br />
