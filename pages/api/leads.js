@@ -16,6 +16,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const apiKey = req.headers["x-admin-key"] || req.query.key;
+  if (!process.env.ADMIN_API_KEY || apiKey !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ error: "Unauthorized access" });
+  }
+
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const skip = (page - 1) * PAGE_SIZE;

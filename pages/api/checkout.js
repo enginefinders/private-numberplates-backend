@@ -1,6 +1,7 @@
 // pages/api/checkout.js
 import axios from "axios";
 import { Resend } from "resend";
+import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
 import { logAction } from "@/lib/monitoringLogger";
@@ -62,10 +63,83 @@ export default async function handler(req, res) {
     const { fQuantity = 0, rQuantity = 0 } = plate_config;
     
     const Backup = getBackupModel();
-
     const bodys = req.body;
+
+    // 🛡️ IDEMPOTENCY CHECK: Prevent duplicate order creation for the same Stripe Payment Intent
+    if (body.paymentIntentId) {
+      const existingBackup = await Backup.findOne({ paymentIntentId: body.paymentIntentId });
+      if (existingBackup) {
+        const existingOrderCode = `PNPM-${existingBackup._id.toString().slice(-5).toUpperCase()}`;
+        const backupObj = existingBackup.toObject ? existingBackup.toObject() : existingBackup;
+        const duplicateResponse = {
+          success: true,
+          order: {
+            ...backupObj,
+            _id: existingBackup._id,
+            id: existingBackup._id.toString(),
+            number: existingOrderCode,
+            orderNumber: existingOrderCode,
+          },
+          orderCode: existingOrderCode,
+          duplicatePrevented: true,
+        };
+
+        // Ensure pending checkout is updated to completed
+        try {
+          const db = mongoose.connection.db;
+          if (db) {
+            await db.collection("pending_checkouts").updateOne(
+              { paymentIntentId: body.paymentIntentId },
+              {
+                $set: {
+                  status: "completed",
+                  orderNumber: existingOrderCode,
+                  updatedAt: new Date(),
+                },
+              }
+            );
+          }
+        } catch (pendingErr) {
+          console.error("Failed to update pending_checkout status (idempotency):", pendingErr.message);
+        }
+
+        await logAction({
+          endpoint: "/api/checkout",
+          actionName: `Duplicate Checkout Prevented: ${customer?.firstName || ""} (${plate_config?.text || "REG"}) [${existingOrderCode}]`,
+          statusCode: 200,
+          requestData: req.body,
+          responseData: duplicateResponse,
+          durationMs: Date.now() - startTime,
+          req,
+        }).catch(console.error);
+
+        return res.status(200).json(duplicateResponse);
+      }
+    }
+
     const backup = await Backup.create(bodys);
     const orderCode = `PNPM-${backup._id.toString().slice(-5).toUpperCase()}`;
+
+    // Mark pending checkout document as completed in DB
+    if (body.paymentIntentId) {
+      try {
+        const db = mongoose.connection.db;
+        if (db) {
+          await db.collection("pending_checkouts").updateOne(
+            { paymentIntentId: body.paymentIntentId },
+            {
+              $set: {
+                status: "completed",
+                orderNumber: orderCode,
+                updatedAt: new Date(),
+              },
+            }
+          );
+        }
+      } catch (pendingErr) {
+        console.error("Failed to update pending_checkout status:", pendingErr.message);
+      }
+    }
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
