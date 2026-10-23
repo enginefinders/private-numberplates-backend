@@ -4,6 +4,8 @@ import { Resend } from "resend";
 import mongoose from "mongoose";
 import connectDB from "@/lib/mongodb";
 import getBackupModel from "@/lib/backupModel";
+import getDiscountModel from "@/lib/discountModel";
+import getLeadsModel from "@/lib/leadModel";
 import { logAction } from "@/lib/monitoringLogger";
 
 export default async function handler(req, res) {
@@ -120,6 +122,53 @@ export default async function handler(req, res) {
     const backup = await Backup.create(bodys);
     const orderCode = `PNPM-${backup._id.toString().slice(-5).toUpperCase()}`;
 
+    // 🏷️ ATOMIC DISCOUNT REDEMPTION: Increment count and log redemption
+    const discountInfo = body.discount || plate_config.discount;
+    if (discountInfo && discountInfo.code) {
+      try {
+        const Discount = getDiscountModel();
+        await Discount.findOneAndUpdate(
+          {
+            code: discountInfo.code.toString().trim().toUpperCase(),
+            "redemptions.paymentIntentId": { $ne: body.paymentIntentId || orderCode },
+          },
+          {
+            $inc: { usedCount: 1 },
+            $push: {
+              redemptions: {
+                orderNumber: orderCode,
+                paymentIntentId: body.paymentIntentId || orderCode,
+                customerEmail: customer?.email,
+                subtotal: plate_config.subtotalBeforeDiscount || plate_config.total,
+                discountAmount: discountInfo.amount || 0,
+                at: new Date(),
+              },
+            },
+          }
+        );
+      } catch (discErr) {
+        console.error("Discount redemption failed:", discErr.message);
+      }
+    }
+
+    // 🔒 EXPIRE RESUME TOKEN FOR THIS LEAD
+    try {
+      const Leads = getLeadsModel();
+      const resumeToken = body.resumeToken || plate_config.resumeToken;
+      const expireQueries = [];
+      if (resumeToken) expireQueries.push({ resumeToken });
+      if (customer?.email) expireQueries.push({ "customer.email": customer.email.trim() });
+
+      if (expireQueries.length > 0) {
+        await Leads.updateMany(
+          { $or: expireQueries },
+          { $set: { resumeTokenExpired: true } }
+        );
+      }
+    } catch (leadExpireErr) {
+      console.error("Lead token expiration failed:", leadExpireErr.message);
+    }
+
     // Mark pending checkout document as completed in DB
     if (body.paymentIntentId) {
       try {
@@ -204,6 +253,8 @@ export default async function handler(req, res) {
     <hr />
 
     <h2>Pricing</h2>
+    ${plate_config.subtotalBeforeDiscount ? `<b>Subtotal:</b> £${plate_config.subtotalBeforeDiscount}<br />` : ""}
+    ${discountInfo && discountInfo.code ? `<b>Discount (${discountInfo.code} - ${discountInfo.percent}%):</b> -£${discountInfo.amount}<br />` : ""}
     <b>Total Price:</b> £${plate_config.total}<br />
     </div>`,
       });
