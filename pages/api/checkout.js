@@ -239,7 +239,7 @@ export default async function handler(req, res) {
     ${
       plate_config.freeKit?.screws
         ? "Screw Fixing Kit with Caps"
-        : "Pack of 10 Sticky Pads"
+        : "Pack of 6 Sticky Pads"
     }
     <br />
     <b>Accessories:</b>

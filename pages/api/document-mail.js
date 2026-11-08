@@ -27,7 +27,7 @@ function formatLabel(input) {
 
 function getFreeKitLabel(freeKit) {
   if (!freeKit) return "None";
-  if (freeKit.pads) return "Pack of 10 Sticky Pads";
+  if (freeKit.pads) return "Pack of 6 Sticky Pads";
   if (freeKit.screws) return "Screw Fixing Kit with Caps";
   if (freeKit.velcro) return "Velcro Plate Holders";
   if (freeKit.magnetic) return "Magnetic Screw-On Holders";
